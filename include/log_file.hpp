@@ -17,12 +17,12 @@ using time_point_s = std::chrono::local_seconds;
 class LogFile
 {
 public:
-    LogFile(std::string path = DEFAULT_LOG_PATH,
-            std::string suffix = DEFAULT_LOG_SUFFIX,
+    LogFile(std::string_view path = DEFAULT_LOG_PATH,
+        std::string_view suffix = DEFAULT_LOG_SUFFIX,
             const uint32_t time_interval = ROLL_LOGFILE_TIME_INTERVAL_s,
             const size_t max_file_size = MAX_LOGFILE_SIZE,
             bool logfile_continuation = DEFAULT_LOGFILE_CONTINUATION,
-            const char *time_zone = DEFAULT_TIME_ZONE);
+            std::string_view time_zone = DEFAULT_TIME_ZONE);
     ~LogFile();
 
     template <class T>
@@ -33,27 +33,27 @@ public:
         return *this;
     }
 
-    inline void flush()
+    void flush()
     {
         fs_.flush();
     }
 
-    inline bool is_open() const noexcept
+    bool is_open() const noexcept
     {
         return fs_.is_open();
     }
 
-    inline std::string get_current_logfile_path() const noexcept
+    std::string get_current_logfile_path() const noexcept
     {
         return current_logfile_path_;
     }
 
-    inline size_t get_current_file_size() const noexcept
+    size_t get_current_file_size() const noexcept
     {
         return last_size_;
     }
 
-    inline time_point_s get_last_roll_time() const noexcept
+    time_point_s get_last_roll_time() const noexcept
     {
         return last_time_;
     }
@@ -74,7 +74,7 @@ private:
 
     inline time_point_s now_sec_() const;
 
-    time_point_s parse_time_string_(const std::string &time_str) const;
+    time_point_s parse_time_string_(std::string_view s) const;
 
     const std::chrono::seconds time_interval_;
     const size_t max_file_size_;

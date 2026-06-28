@@ -14,7 +14,7 @@ public:
     }
     ~FixedBuffer() = default;
 
-    std::string_view read(size_t len)
+    std::string_view read(size_t len) noexcept
     {
         size_t read_len = 0;
         const char *ptr = get_read_ptr(read_len);
@@ -22,7 +22,7 @@ public:
         set_has_read(read_len);
         return std::string_view{ptr, read_len};
     }
-    std::string_view read()
+    std::string_view read() noexcept
     {
         size_t read_len = 0;
         const char *ptr = get_read_ptr(read_len);
@@ -30,14 +30,14 @@ public:
         return std::string_view{ptr, read_len};
     }
 
-    std::string_view peak(size_t len)
+    std::string_view peak(size_t len) const noexcept
     {
         size_t read_len = 0;
         const char *ptr = get_read_ptr(read_len);
         read_len = std::min(len, read_len);
         return std::string_view{ptr, read_len};
     }
-    std::string_view peak()
+    std::string_view peak() const noexcept
     {
         size_t read_len = 0;
         const char *ptr = get_read_ptr(read_len);

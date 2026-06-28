@@ -6,7 +6,7 @@
 #include <chrono>
 #include <assert.h>
 #include <stddef.h>
-#include <vector>
+#include <atomic>
 
 using Ms = std::chrono::milliseconds;
 
@@ -16,34 +16,34 @@ template <class T>
 class BlockQueue
 {
 public:
-    BlockQueue() = default;
+    BlockQueue() : capacity_(SIZE_MAX){}; // 无限容量
+    BlockQueue(size_t capacity) : capacity_(capacity){}; // 限制容量
     ~BlockQueue();
 
-    void clear();
-    bool empty();
-    bool full();
-    void close();
+    void clear() noexcept;
+    bool empty() noexcept;
+    bool full() noexcept;
+    void close() noexcept; // 仅拒绝修改请求 不清空队列
+    void start() noexcept;
 
     bool wait_for_not_empty_or_timeout(Ms timeout);
-    void swap_all(std::deque<T> &out);
+    void swap_all(std::deque<T> &out) noexcept;
 
-    size_t size();
-    size_t capacity();
+    size_t size() noexcept;
+    size_t capacity() noexcept;
 
     T front();
     T back();
 
-    template <typename U>
-    void push_back(U &&item, Ms timeout);
-
+    bool push_back(T &&item, Ms timeout);
     bool pop(T &item, Ms timeout);
-    void flush();
+    void flush() noexcept;
 
 private:
     std::deque<T> deq_;
-    size_t capacity_ = 100;
+    std::atomic<size_t> capacity_;
     std::mutex mtx_;
-    bool is_close_ = false;
+    std::atomic<bool> is_close_ = false;
     std::condition_variable condConsumer_;
     std::condition_variable condProducer_;
 };
@@ -55,25 +55,25 @@ BlockQueue<T>::~BlockQueue()
 };
 
 template <class T>
-void BlockQueue<T>::close()
+void BlockQueue<T>::close() noexcept
 {
-    {
-        std::lock_guard<std::mutex> locker(mtx_);
-        deq_.clear();
-        is_close_ = true;
-    }
+    is_close_ = true;
     condProducer_.notify_all();
     condConsumer_.notify_all();
 };
-
 template <class T>
-void BlockQueue<T>::flush()
+void BlockQueue<T>::start() noexcept
+{
+    is_close_ = false;
+}
+template <class T>
+void BlockQueue<T>::flush() noexcept
 {
     condConsumer_.notify_one();
 };
 
 template <class T>
-void BlockQueue<T>::clear()
+void BlockQueue<T>::clear() noexcept
 {
     std::lock_guard<std::mutex> locker(mtx_);
     deq_.clear();
@@ -96,28 +96,27 @@ T BlockQueue<T>::back()
 }
 
 template <class T>
-size_t BlockQueue<T>::size()
+size_t BlockQueue<T>::size() noexcept
 {
     std::lock_guard<std::mutex> locker(mtx_);
     return deq_.size();
 }
 
 template <class T>
-size_t BlockQueue<T>::capacity()
+size_t BlockQueue<T>::capacity() noexcept
 {
-    std::lock_guard<std::mutex> locker(mtx_);
     return capacity_;
 }
 
 template <class T>
-bool BlockQueue<T>::empty()
+bool BlockQueue<T>::empty() noexcept
 {
     std::lock_guard<std::mutex> locker(mtx_);
     return deq_.empty();
 }
 
 template <class T>
-bool BlockQueue<T>::full()
+bool BlockQueue<T>::full() noexcept
 {
     std::lock_guard<std::mutex> locker(mtx_);
     return deq_.size() >= capacity_;
@@ -130,9 +129,7 @@ bool BlockQueue<T>::pop(T &item, Ms timeout)
     bool flag = condConsumer_.wait_for(locker, timeout, [this]()
                                        { return !deq_.empty() || is_close_; });
     if (!flag || is_close_)
-    {
         return false;
-    }
     item = std::move(deq_.front()); // 适配缓冲区, 转移所有权
     deq_.pop_front();
     condProducer_.notify_one();
@@ -140,23 +137,21 @@ bool BlockQueue<T>::pop(T &item, Ms timeout)
 }
 
 template <class T>
-template <typename U>
-void BlockQueue<T>::push_back(U &&item, Ms timeout)
+bool BlockQueue<T>::push_back(T &&item, Ms timeout)
 {
     std::unique_lock<std::mutex> locker(mtx_);
-    if(is_close_)
-        return;
     bool flag = condProducer_.wait_for(locker, timeout, [this]()
                                        { return deq_.size() < capacity_ || is_close_; });
     if (!flag || is_close_)
-        return;
+        return false;
     // 完美转发，原地移动/拷贝
-    deq_.emplace_back(std::forward<U>(item));
+    deq_.emplace_back(std::forward<T>(item));
     condConsumer_.notify_one();
+    return true;
 }
 
 template <class T>
-void BlockQueue<T>::swap_all(std::deque<T> &out)
+void BlockQueue<T>::swap_all(std::deque<T> &out) noexcept
 {
     std::lock_guard<std::mutex> lock(mtx_);
     deq_.swap(out);

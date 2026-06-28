@@ -9,12 +9,19 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 include_directories(./include ./config ./test)
 
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/build/test_space)
+
+add_executable(async_logger_test ./test/unit/async_logger_test.cpp ./src/buffer.cpp ./src/async_logger.cpp ./src/log_file.cpp)
+
+add_executable(test_async_logger_2 ./test/unit/test_async_logger_2.cpp ./src/buffer.cpp ./src/async_logger.cpp ./src/log_file.cpp)
+
+add_executable(mytest ./test/unit/mytest.cpp ./src/buffer.cpp ./src/async_logger.cpp ./src/log_file.cpp)
+
 #add_executable(buffer_test ./test/buffer_test.cpp ./src/buffer.cpp)
 
 #add_executable(log_buffer_test ./test/log_buffer_test.cpp ./src/buffer.cpp)
 
 #add_executable(block_queue_test ./test/block_queue_test.cpp)
-
-add_executable(async_logger_test ./test/async_logger_test.cpp ./src/buffer.cpp ./src/async_logger.cpp ./src/log_file.cpp)
 
 #add_executable(log_file_test ./test/log_file_test.cpp ./src/log_file.cpp)

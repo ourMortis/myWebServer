@@ -1,8 +1,8 @@
 #include "log_file.hpp"
 
-LogFile::LogFile(std::string path, std::string suffix,
+LogFile::LogFile(std::string_view path, std::string_view suffix,
                  const uint32_t time_interval, const size_t max_file_size,
-                 bool logfile_continuation, const char *time_zone)
+                 bool logfile_continuation, std::string_view time_zone)
     : time_interval_(time_interval), max_file_size_(max_file_size),
       path_(path), suffix_(suffix), last_size_(0), serial_number_(1),
       time_zone_(std::chrono::get_tzdb().locate_zone(time_zone))
@@ -142,9 +142,8 @@ inline std::string LogFile::get_now_time_string_() const
     return std::format("[{:%Y-%m-%d_%H-%M-%S}]", now_sec_());
 }
 // 必须保证传入的格式形如 [2026-06-26_05-03-37]
-time_point_s LogFile::parse_time_string_(const std::string &time_str) const
+time_point_s LogFile::parse_time_string_(std::string_view s) const
 {
-    std::string_view s{time_str};
     s = s.substr(1, s.size() - 2);
     time_point_s local_time;
     std::istringstream iss{std::string(s)};

@@ -3,14 +3,14 @@
 AsyncLogger::AsyncLogger() = default;
 
 bool AsyncLogger::init(
-    const char *path,
-    const char *suffix,
+    std::string_view path,
+    std::string_view suffix,
     size_t current_buffer_size,
     LogLevel log_level,
     const uint32_t time_interval,
     const size_t max_file_size,
     bool logfile_continuation,
-    const char *time_zone)
+    std::string_view time_zone)
 {
     if (is_close_)
     {
@@ -35,7 +35,7 @@ bool AsyncLogger::init(
     return false;
 }
 
-void AsyncLogger::write_thread_func()
+void AsyncLogger::write_thread_func_()
 {
 
     BufferPtr new_buf1 = std::make_unique<FixedBuffer>(CURRENT_BUFFER_SIZE, 0);

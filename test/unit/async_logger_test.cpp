@@ -80,7 +80,7 @@ int main()
 
     // 日志输出配置：仅单文件输出，文件滚动功能未实现，max_line参数无实际作用
     const char *log_dir = "./single_log_test/";
-    const char *suffix = "log";
+    const char *suffix = ".log";
     const uint32_t dummy_max_line = 9999; // 切文件逻辑未实现，此参数仅占位，不会触发分割
     const size_t buf_size = CURRENT_BUFFER_SIZE;
 

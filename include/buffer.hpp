@@ -21,7 +21,7 @@ public:
     ~Buffer() = default;
 
     // 为了对接 系统调用(readv 和 write) 提供返回 裸指针 和 可读/写长度 的读写接口
-    const char *get_read_ptr(size_t &readable_len) noexcept
+    const char *get_read_ptr(size_t &readable_len) const noexcept
     {
         readable_len = get_readable_size();
         return buffer_.data() + read_pos_;
@@ -33,16 +33,16 @@ public:
     }
 
     // 读/写完成后必须调用set 更新pos成员变量
-    inline void set_has_written(size_t len) noexcept
+    void set_has_written(size_t len) noexcept
     {
         write_pos_ += len;
     }
-    inline void set_has_read(size_t len) noexcept
+    void set_has_read(size_t len) noexcept
     {
         read_pos_ += len;
     }
 
-    inline void set_has_read() noexcept
+    void set_has_read() noexcept
     {
         read_pos_ = write_pos_;
     }
@@ -64,31 +64,31 @@ public:
         write_pos_ = MIN_PREPENDABLE_SIZE;
     }
 
-    void reset() // 不清洗数据, 归位读写pos
+    void reset() noexcept // 不清洗数据, 归位读写pos
     {
         read_pos_ = MIN_PREPENDABLE_SIZE;
         write_pos_ = MIN_PREPENDABLE_SIZE;
     }
 
-    inline size_t get_prependable_size() const noexcept // 最小值为MIN_PREPENDABLE_SIZE 一般随着read操作增大
+    size_t get_prependable_size() const noexcept // 最小值为MIN_PREPENDABLE_SIZE 一般随着read操作增大
     {
         return read_pos_;
     }
-    inline size_t get_readable_size() const noexcept
+    size_t get_readable_size() const noexcept
     {
         return write_pos_ - read_pos_;
     }
-    inline size_t get_writable_size() const noexcept
+    size_t get_writable_size() const noexcept
     {
         return buffer_.size() - write_pos_;
     }
 
 protected: //提供给派生类访问
-    inline const char *get_read_ptr_()
+    const char *get_read_ptr_() noexcept
     {
         return buffer_.data() + read_pos_;
     }
-    inline char *get_write_ptr_()
+    char *get_write_ptr_() noexcept
     {
         return buffer_.data() + write_pos_;
     }

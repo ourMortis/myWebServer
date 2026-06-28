@@ -38,21 +38,21 @@ public:
     }
 
     // 获取单例后init 如果是已经关闭的 返回true 否则返回false 这个函数在close后也可作为set函数使用
-    bool init(const char *path = DEFAULT_LOG_PATH, // 日志存储文件夹路径
-              const char *suffix = DEFAULT_LOG_SUFFIX, // 日志文件后缀 不会自动加'.' 应输入如".log"
+    bool init(std::string_view path = DEFAULT_LOG_PATH, // 日志存储文件夹路径
+              std::string_view suffix = DEFAULT_LOG_SUFFIX, // 日志文件后缀 不会自动加'.' 应输入如".log"
               size_t current_buffer_size = CURRENT_BUFFER_SIZE, // 当前缓冲区大小 应当小于 max_file_size
               LogLevel log_level = DEFAULT_LOG_LEVEL, // 日志等级
               const uint32_t time_interval = ROLL_LOGFILE_TIME_INTERVAL_s, // 滚动文件时间间隔 当本次写入时间 减 上一次写入时间 大于此间隔 触发文件滚动
               const size_t max_file_size = MAX_LOGFILE_SIZE, // 日志文件最大字节数 保证不超过max(max_file_size, current_buffer_size)
               bool logfile_continuation = DEFAULT_LOGFILE_CONTINUATION, // 是否以续写模式打开 如果是 会接着最后一个日志文件续写 否则新建文件
-              const char *time_zone = DEFAULT_TIME_ZONE); // 时区 如 "Asia/Shanghai"
+              std::string_view time_zone = DEFAULT_TIME_ZONE); // 时区 如 "Asia/Shanghai"
 
     void start()
     {
         assert(initialized_ && is_close_);
         assert(fs_->is_open());
         is_close_ = false;
-        write_thread_ = std::thread(&AsyncLogger::write_thread_func, this);
+        write_thread_ = std::thread(&AsyncLogger::write_thread_func_, this);
     }
 
     void close()
@@ -140,7 +140,7 @@ public:
 private:
     AsyncLogger();
 
-    inline void drop_(uint32_t number) // 丢弃number个缓冲区 打印错误+直接输出日志到文件
+    void drop_(uint32_t number) // 丢弃number个缓冲区 打印错误+直接输出日志到文件
     {
         char stack_buffer[STACK_BUFFER_SIZE];
         auto now = std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now());
@@ -151,7 +151,7 @@ private:
         *fs_ << std::string_view(stack_buffer, len);
     }
 
-    void write_thread_func();
+    void write_thread_func_();
 
     // 文件
     std::unique_ptr<LogFile> fs_;

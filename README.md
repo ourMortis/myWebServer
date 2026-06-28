@@ -4,15 +4,41 @@
 
 主线程负责监听事件，有可读或可写等事件时，放入任务队列，等待线程池处理
 
+------
+
 
 
 # 模块
 
-1. **日志 logger**
-2. **线程池 thread_pool**
-3. **数据库连接池 sql_connection_pool**
-4. **定时器 timer**
-5. **Http处理器 httpprocesser**
+1. **日志 logger** (基本成功)
+2. **线程池 thread_pool** (进行中)
+3. **数据库连接池 sql_connection_pool** (计划中)
+4. **定时器 timer** (计划中)
+5. **Http处理器 httpprocesser** (计划中)
+
+------
+
+
+
+
+
+# 模块详解
+
+## 双缓冲异步日志系统
+
+![双缓冲异步日志.drawio](README/双缓冲异步日志.drawio.png)
+
+## 日志文件系统
+
+
+
+# 模块测评
+
+| **模块名**         | **单元测试 Unit Test** | **基准测试Benchmark** | **评价** |
+| ------------------ | ---------------------- | --------------------- | -------- |
+| 双缓冲异步日志系统 | 基本成功               | 待做                  | /        |
+| 日志文件系统       | 绝对能行               | 待做                  | /        |
+|                    |                        |                       |          |
 
 
 
@@ -70,28 +96,25 @@ LogFile 日志文件
 
 
 
-# 模块详解
-
-## 双缓冲异步日志系统
-
-![双缓冲异步日志.drawio](README/双缓冲异步日志.drawio.png)
-
-
-
-
-
-
-
-
-
-
-
 # C++标准库使用
 
-std::print (C++23)
+```
+多线程: thread atomic  lock  condition_variable
+错误处理: assert.h
+字符串处理: format string string_view sstream
+系统信息: chrono source_location filesystem
+输入输出 iostream fstream
+容器 vector deque
+算法 algorithm
+测试使用 random
+```
 
-std::thread (C++11)
 
-atomic  lock  condition_variable等
 
-assert
+# 环境配置
+
+```
+cmake version 4.3.3
+g++ (Ubuntu 14.3.0-12ubuntu1~22~ppa2) 14.3.0
+```
+
