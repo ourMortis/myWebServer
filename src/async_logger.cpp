@@ -1,7 +1,5 @@
 #include "async_logger.hpp"
 
-AsyncLogger::AsyncLogger() = default;
-
 bool AsyncLogger::init(
     std::string_view path,
     std::string_view suffix,

@@ -24,7 +24,6 @@ using time_point_s = std::chrono::local_seconds;
 class AsyncLogger
 {
 public:
-    ~AsyncLogger() = default;
     AsyncLogger(const AsyncLogger &) = delete;
     AsyncLogger &operator=(const AsyncLogger &) = delete;
     AsyncLogger(AsyncLogger &&) = delete;
@@ -138,7 +137,8 @@ public:
     }
 
 private:
-    AsyncLogger();
+    AsyncLogger() = default;
+    ~AsyncLogger() = default;
 
     void drop_(uint32_t number) // 丢弃number个缓冲区 打印错误+直接输出日志到文件
     {
