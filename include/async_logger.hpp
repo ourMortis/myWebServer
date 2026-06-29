@@ -70,7 +70,7 @@ public:
     }
 
     // 无写入长度检查, 使用时注意单条日志长度(包括自动补充的时间等信息的长度)不要超过STACK_BUFFER长度
-    template <LogLevel lv, bool show_time = true, bool show_file = true, bool show_line = true, bool show_function = true, typename... Args>
+    template <LogLevel lv, bool show_time, bool show_file, bool show_line, bool show_function, typename... Args>
     void log(std::source_location loc, const char *fmt, Args &&...args)
     {
         if (lv < log_level_ || is_close_)
@@ -153,25 +153,20 @@ private:
 
     void write_thread_func_();
 
-    // 文件
+    // 日志文件
     std::unique_ptr<LogFile> fs_;
-
+    const std::chrono::time_zone *time_zone_;
     // 设置相关成员 atomic保证线程安全
     std::atomic<bool> is_close_ = true;
     std::atomic<bool> initialized_ = false;
     std::atomic<LogLevel> log_level_;
-
-    // 日志信息
-    const std::chrono::time_zone *time_zone_;
-
     // buffer
     using BufferPtr = std::unique_ptr<FixedBuffer>;
     BufferPtr current_buffer_;
     size_t current_buffer_size_;
     BufferPtr next_buffer_;
     BlockQueue<BufferPtr> block_queue_;
-
-    // 线程
+    // 多线程
     std::thread write_thread_;
     std::mutex mtx_;
 };

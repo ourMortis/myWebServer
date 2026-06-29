@@ -45,7 +45,7 @@ public:
     }
 
     // 不做安全检查, 使用前判断可写区域大小, 与基类相比, 不自动扩容
-    inline void append_fix(const char* str, size_t len)
+    void append_fix(const char* str, size_t len)
     {
         char* ptr = get_write_ptr_();
         std::copy(str, str + len, ptr);
