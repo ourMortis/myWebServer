@@ -7,8 +7,7 @@ bool AsyncLogger::init(
     LogLevel log_level,
     const uint32_t time_interval,
     const size_t max_file_size,
-    bool logfile_continuation,
-    std::string_view time_zone)
+    bool logfile_continuation)
 {
     if (is_close_)
     {
@@ -19,12 +18,12 @@ bool AsyncLogger::init(
             assert(STACK_BUFFER_SIZE <= CURRENT_BUFFER_SIZE);
             log_level_ = log_level;
             current_buffer_size_ = current_buffer_size;
-            time_zone_ = std::chrono::get_tzdb().locate_zone(time_zone);
             // 如果之前持有对象 自动析构
             current_buffer_ = std::make_unique<FixedBuffer>(current_buffer_size, 0);
             next_buffer_ = std::make_unique<FixedBuffer>(current_buffer_size, 0);
-            fs_ = std::make_unique<LogFile>(path, suffix, time_interval, max_file_size, logfile_continuation, time_zone);
-
+            fs_ = std::make_unique<LogFile>(path, suffix, time_interval, max_file_size, logfile_continuation);
+            producer_timeout_ = time_ms(PRODUCER_TIMEOUT_ms);
+            consumer_timeout_ = time_ms(CONSUMER_TIMEOUT_ms);
             assert(fs_->is_open());
             initialized_ = true;
             return true;
@@ -46,7 +45,7 @@ void AsyncLogger::write_thread_func_()
         assert(new_buf2 && new_buf2->get_readable_size() == 0);
         assert(local_buffers.empty());
 
-        block_queue_.wait_for_not_empty_or_timeout(Ms(CONSUMER_TIMEOUT_ms));
+        block_queue_.wait_for_not_empty_or_timeout(consumer_timeout_);
         // 超时或获得缓冲区 将当前队列内和current_buffer全部移入buffers_to_write
         { // 线程安全的交换
             std::lock_guard<std::mutex> lock(mtx_);

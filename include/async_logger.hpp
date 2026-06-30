@@ -18,7 +18,6 @@
 #include <vector>
 #include <iostream>
 
-using Ms = std::chrono::milliseconds;
 using time_point_s = std::chrono::local_seconds;
 
 class AsyncLogger
@@ -37,14 +36,13 @@ public:
     }
 
     // 获取单例后init 如果是已经关闭的 返回true 否则返回false 这个函数在close后也可作为set函数使用
-    bool init(std::string_view path = DEFAULT_LOG_PATH, // 日志存储文件夹路径
-              std::string_view suffix = DEFAULT_LOG_SUFFIX, // 日志文件后缀 不会自动加'.' 应输入如".log"
-              size_t current_buffer_size = CURRENT_BUFFER_SIZE, // 当前缓冲区大小 应当小于 max_file_size
-              LogLevel log_level = DEFAULT_LOG_LEVEL, // 日志等级
+    bool init(std::string_view path = DEFAULT_LOG_PATH,                    // 日志存储文件夹路径
+              std::string_view suffix = DEFAULT_LOG_SUFFIX,                // 日志文件后缀 不会自动加'.' 应输入如".log"
+              size_t current_buffer_size = CURRENT_BUFFER_SIZE,            // 当前缓冲区大小 应当小于 max_file_size
+              LogLevel log_level = DEFAULT_LOG_LEVEL,                      // 日志等级
               const uint32_t time_interval = ROLL_LOGFILE_TIME_INTERVAL_s, // 滚动文件时间间隔 当本次写入时间 减 上一次写入时间 大于此间隔 触发文件滚动
-              const size_t max_file_size = MAX_LOGFILE_SIZE, // 日志文件最大字节数 保证不超过max(max_file_size, current_buffer_size)
-              bool logfile_continuation = DEFAULT_LOGFILE_CONTINUATION, // 是否以续写模式打开 如果是 会接着最后一个日志文件续写 否则新建文件
-              std::string_view time_zone = DEFAULT_TIME_ZONE); // 时区 如 "Asia/Shanghai"
+              const size_t max_file_size = MAX_LOGFILE_SIZE,               // 日志文件最大字节数 保证不超过max(max_file_size, current_buffer_size)
+              bool logfile_continuation = DEFAULT_LOGFILE_CONTINUATION);   // 是否以续写模式打开 如果是 会接着最后一个日志文件续写 否则新建文件
 
     void start()
     {
@@ -97,7 +95,7 @@ public:
 
         if constexpr (show_time)
         {
-            auto now = time_zone_->to_local(std::chrono::floor<std::chrono::milliseconds>(std::chrono::system_clock::now()));
+            auto now = TimeUtil::now_ms();
             end = std::format_to(start, "[{:%Y-%m-%d %H:%M:%S}]", now);
             start = end;
         }
@@ -123,7 +121,7 @@ public:
         size_t log_len = end - stack_buffer;
         if (current_buffer_->get_writable_size() < log_len)
         {  // 如果 current_buffer 写不下了, 就丢给阻塞队列, 换next_buffer
-            block_queue_.push_back(std::move(current_buffer_), Ms(PRODUCER_TIMEOUT_ms));
+            block_queue_.push_back(std::move(current_buffer_), producer_timeout_);
             if (next_buffer_)
             {
                 current_buffer_ = std::move(next_buffer_);
@@ -145,7 +143,7 @@ private:
         char stack_buffer[STACK_BUFFER_SIZE];
         auto now = std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now());
         auto res = std::format_to_n(stack_buffer, STACK_BUFFER_SIZE,
-                                    "Dropped log messages at {:%Y-%m-%d %H:%M:%S}, {} larger buffers\n", time_zone_->to_local(now), number);
+                                    "Dropped log messages at {:%Y-%m-%d %H:%M:%S}, {} larger buffers\n", TimeUtil::now_ms(), number);
         size_t len = res.size;
         std::cerr.write(stack_buffer, len);
         *fs_ << std::string_view(stack_buffer, len);
@@ -155,7 +153,6 @@ private:
 
     // 日志文件
     std::unique_ptr<LogFile> fs_;
-    const std::chrono::time_zone *time_zone_;
     // 设置相关成员 atomic保证线程安全
     std::atomic<bool> is_close_ = true;
     std::atomic<bool> initialized_ = false;
@@ -169,6 +166,8 @@ private:
     // 多线程
     std::thread write_thread_;
     std::mutex mtx_;
+    time_ms producer_timeout_;
+    time_ms consumer_timeout_;
 };
 
 inline void LOG_ALL(const char* fmt, auto&&... args)

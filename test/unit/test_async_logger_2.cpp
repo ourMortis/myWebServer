@@ -31,7 +31,7 @@ void test_basic_log_write() {
     // 初始化异步日志器
     auto logger = AsyncLogger::getInstance();
     bool init_ret = logger->init(log_path.c_str(), log_suffix.c_str(),
-                                 4096, LogLevel::DEBUG, 30, 1024*1024, false, "Asia/Shanghai");
+                                 4096, LogLevel::DEBUG, 30, 1024*1024, false);
     assert(init_ret == true); // 首次初始化应为true
     
     // 启动日志线程
@@ -63,7 +63,7 @@ void test_multi_thread_log() {
     
     auto logger = AsyncLogger::getInstance();
     bool init_ret = logger->init(log_path.c_str(), log_suffix.c_str(),
-                                 8192, LogLevel::DEBUG, 30, 2*1024*1024, false, "Asia/Shanghai");
+                                 8192, LogLevel::DEBUG, 30, 2*1024*1024, false);
     assert(init_ret == true);
     logger->start();
 
@@ -107,7 +107,7 @@ void test_log_level_filter() {
     auto logger = AsyncLogger::getInstance();
     // 设置日志级别为ERROR，只应输出ERROR及FATAL级别日志
     bool init_ret = logger->init(log_path.c_str(), log_suffix.c_str(),
-                                 4096, LogLevel::ERROR, 30, 1024*1024, false, "Asia/Shanghai");
+                                 4096, LogLevel::ERROR, 30, 1024*1024, false);
     assert(init_ret == true);
     logger->start();
 

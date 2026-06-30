@@ -1,21 +1,19 @@
 #include "mysql_connection.hpp"
 
-MySQLConnection::MySQLConnection()
+MySQLConnection::MySQLConnection() : mysql_connection_(mysql_init(nullptr))
 {
-    mysql_connection_ = mysql_init(nullptr);
+    update_timestamp_();
 }
 
 MySQLConnection::~MySQLConnection()
 {
-    mysql_free_result(mysql_result_);
-    if(mysql_connection_ != nullptr)
+    if (mysql_connection_ != nullptr)
     {
         mysql_close(mysql_connection_);
     }
 }
 
-bool MySQLConnection::connect(MYSQL *mysql,
-                              std::string_view host,
+bool MySQLConnection::connect(std::string_view host,
                               std::string_view user,
                               std::string_view passwd,
                               std::string_view db,
@@ -23,38 +21,63 @@ bool MySQLConnection::connect(MYSQL *mysql,
                               std::string_view unix_socket,
                               ulong client_flag)
 {
+    const char *u_s = unix_socket == "" ? NULL : unix_socket.data();
     mysql_connection_ = mysql_real_connect(mysql_connection_,
                                            host.data(),
                                            user.data(),
                                            passwd.data(),
                                            db.data(),
                                            port,
-                                           unix_socket.data(),
+                                           u_s,
                                            client_flag);
+    update_timestamp_();
     return mysql_connection_ != nullptr;
 }
 
-bool MySQLConnection::update(std::string_view sql)
+int MySQLConnection::execute(std::string_view sql)
 {
-    return mysql_query(mysql_connection_, sql.data()) == 0;
+    if (mysql_query(mysql_connection_, sql.data()) != 0)
+    {
+        // 错误处理
+        return -1;
+    }
+    uint64_t affected = mysql_affected_rows(mysql_connection_);
+    update_timestamp_();
+    return static_cast<int>(affected);
 }
 
-bool MySQLConnection::query(std::string_view sql)
+table MySQLConnection::query(std::string_view sql)
 {
-    free_result_();
-    if(mysql_query(mysql_connection_, sql.data()))
+    if (mysql_query(mysql_connection_, sql.data()))
     {
-        return false;
+        return {};
     }
-    mysql_result_ = mysql_store_result(mysql_connection_);
-    return true;
+    MYSQL_RES *sql_res = mysql_store_result(mysql_connection_);
+    if (!sql_res)
+    {
+        return {};
+    }
+    uint n_cols = mysql_num_fields(sql_res);
+    MYSQL_FIELD *fields = mysql_fetch_field(sql_res);
+    table t;
+    MYSQL_ROW row;
+    for (size_t i = 0; i < n_cols; i++)
+    {
+        t[fields[i].name].reserve(n_cols);
+    }
+    while (row = mysql_fetch_row(sql_res))
+    {
+        for (size_t i = 0; i < n_cols; i++)
+        {
+            t[fields[i].name].emplace_back<std::string>(row[i] ? row[i] : "");
+        }
+    }
+    mysql_free_result(sql_res);
+    update_timestamp_();
+    return t;
 }
 
-void MySQLConnection::free_result_()
+void MySQLConnection::update_timestamp_()
 {
-    if(mysql_result_ != nullptr)
-    {
-        mysql_free_result(mysql_result_);
-        mysql_result_ = nullptr;
-    }
+    active_timestamp_ = TimeUtil::now_sec();
 }

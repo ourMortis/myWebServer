@@ -33,11 +33,11 @@ int main()
     vector<string> strs = TestUtils::get_str(RANDOM_STR_SIZE_MIN, RANDOM_STR_SIZE_MAX, STR_NUMBER); // 准备字符串
     //初始化
     chrono::seconds time_interval_s(time_interval);
-    LogFile *lf = new LogFile(path, suffix, time_interval, file_max_size, false, DEFAULT_TIME_ZONE);
+    LogFile *lf = new LogFile(path, suffix, time_interval, file_max_size, false);
     time_point_s last_time = lf->get_last_roll_time();
     size_t last_size = 0;
     filesystem::path current_file_path = lf->get_current_logfile_path();
-    TestUtils::set_time_zone(DEFAULT_TIME_ZONE);
+    TestUtils::set_time_zone(TIME_ZONE);
     // 开始验证
     for (int i = 1; i <= WRITE_COUNT; i++)
     {
@@ -54,7 +54,7 @@ int main()
         if (i % REOPEN_EVERY_N_TIMES == 0) // 重开
         {
             delete lf;
-            lf = new LogFile(path, suffix, time_interval, file_max_size, true, DEFAULT_TIME_ZONE);
+            lf = new LogFile(path, suffix, time_interval, file_max_size, true);
         }
         int len = strs[index].size();
         (*lf) << strs[index];

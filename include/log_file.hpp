@@ -7,9 +7,9 @@
 #include <format>
 #include <filesystem>
 #include <assert.h>
+#include "time_util.hpp"
 #include "async_logger_config.hpp"
 
-using time_point_s = std::chrono::local_seconds;
 // 封装ofstream提供自动日志文件滚动功能 该类线程不安全
 // 支持:
 // 一定时间间隔后滚动 一定文件大小后滚动
@@ -21,8 +21,7 @@ public:
         std::string_view suffix = DEFAULT_LOG_SUFFIX,
             const uint32_t time_interval = ROLL_LOGFILE_TIME_INTERVAL_s,
             const size_t max_file_size = MAX_LOGFILE_SIZE,
-            bool logfile_continuation = DEFAULT_LOGFILE_CONTINUATION,
-            std::string_view time_zone = DEFAULT_TIME_ZONE);
+            bool logfile_continuation = DEFAULT_LOGFILE_CONTINUATION);
     ~LogFile();
 
     template <class T>
@@ -68,11 +67,7 @@ private:
 
     void open_lastlog2append_();
 
-    inline std::string get_now_time_string_() const;
-
     inline std::filesystem::path set_logfile_path_(bool mode); // 根据成员变量 拼接成要使用的文件路径, mode:true超时, mode:false超大小
-
-    inline time_point_s now_sec_() const;
 
     time_point_s parse_time_string_(std::string_view s) const;
 
