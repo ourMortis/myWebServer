@@ -86,10 +86,11 @@ FixedBuffer : public Buffer
 BlockQueue 阻塞队列
     实现生产者-消费者模型 提供支持 等待超时 移动语义 的接口 主要包括:
 	    bool push_back(T &&item, Ms timeout)
-    	bool pop(T &item, Ms timeout)
+    	bool pop_front(T &item, Ms timeout)
     为了适配双缓冲异步日志系统要求的整体swap 提供如下接口
     	bool wait_for_not_empty_or_timeout(Ms timeout)
         void swap_all(std::deque<T> &out) noexcept 
+    以及C++标准库风格的 begin end front back pop_fornt 等接口
     
 ```
 
@@ -136,6 +137,25 @@ ThreadPool 线程池
      由私有方法 void worker(std::shared_ptr<shared_pool_data> pool_data_sptr) 实现功能
             线程调用Task派生类的process方法处理任务
 ```
+
+```c++
+MySQLConnection MySQL连接的封装类
+	实现RAII 并且提供封装好的安全接口 加入活跃时间戳用于检查
+	int execute(std::string_view sql) 任何修改行为 包括 插入 删除 等 返回受影响的行数
+    table query(std::string_view sql) 查询返回结果
+```
+
+```c++
+SQLConnectionPool 数据库连接池 懒汉单例 线程安全
+    主要成员是BlockQueue<std::unique_ptr<MySQLConnection>> block_queue_
+    提供获取数据库连接 和 管理空闲连接 的接口 主要有:
+    std::unique_ptr<MySQLConnection, MySQLConnectionUptrDeleter> get_connection()
+    void put_connection(MySQLConnection *conn)
+    void reclaim_idle_connections()
+    MySQLConnectionUptrDeleter为自定义删除器 指针析构时 自动调用put_connection归还连接 并更新活跃时间戳
+```
+
+
 
 
 

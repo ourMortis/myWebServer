@@ -2,7 +2,6 @@
 
 MySQLConnection::MySQLConnection() : mysql_connection_(mysql_init(nullptr))
 {
-    update_timestamp_();
 }
 
 MySQLConnection::~MySQLConnection()
@@ -30,7 +29,6 @@ bool MySQLConnection::connect(std::string_view host,
                                            port,
                                            u_s,
                                            client_flag);
-    update_timestamp_();
     return mysql_connection_ != nullptr;
 }
 
@@ -42,7 +40,6 @@ int MySQLConnection::execute(std::string_view sql)
         return -1;
     }
     uint64_t affected = mysql_affected_rows(mysql_connection_);
-    update_timestamp_();
     return static_cast<int>(affected);
 }
 
@@ -73,11 +70,27 @@ table MySQLConnection::query(std::string_view sql)
         }
     }
     mysql_free_result(sql_res);
-    update_timestamp_();
     return t;
 }
 
-void MySQLConnection::update_timestamp_()
+void MySQLConnection::set_last_active_time(time_point_s time)
 {
-    active_timestamp_ = TimeUtil::now_sec();
+    last_active_ = time;
+}
+
+time_point_s MySQLConnection::get_last_active_time()
+{
+    return last_active_;
+}
+
+void  MySQLConnection::disconnect()
+{
+    if(mysql_connection_ != nullptr)
+    {
+        mysql_close(mysql_connection_);
+    }
+}
+bool MySQLConnection::is_connected()
+{
+    return mysql_connection_ != nullptr;
 }

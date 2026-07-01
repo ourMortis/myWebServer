@@ -16,8 +16,8 @@ template <class T>
 class BlockQueue
 {
 public:
-    BlockQueue() : capacity_(SIZE_MAX){}; // 无限容量
-    BlockQueue(size_t capacity) : capacity_(capacity){}; // 限制容量
+    BlockQueue() : capacity_(SIZE_MAX) {};                // 无限容量
+    BlockQueue(size_t capacity) : capacity_(capacity) {}; // 限制容量
     ~BlockQueue();
 
     void start() noexcept;
@@ -29,14 +29,25 @@ public:
     size_t size() noexcept;
     size_t capacity() noexcept;
 
-    T front();
-    T back();
+    T &front();
+    const T &front() const;
+    T &back();
+    const T &back() const;
 
     bool push_back(T &&item, Ms timeout);
-    bool pop(T &item, Ms timeout);
+    bool push_front(T &&item, Ms timeout);
+    bool pop_front(T &item, Ms timeout);
+    bool pop_front(Ms timeout);
+    bool pop_back(T &item, Ms timeout);
+    bool pop_back(Ms timeout);
     bool wait_for_not_empty_or_timeout(Ms timeout);
     void swap_all(std::deque<T> &out) noexcept;
     void flush() noexcept;
+
+    auto begin();
+    auto end();
+    auto rbegin();
+    auto rend();
 
 private:
     std::deque<T> deq_;
@@ -48,9 +59,34 @@ private:
 };
 
 template <class T>
+auto BlockQueue<T>::begin()
+{
+    std::lock_guard<std::mutex> locker(mtx_);
+    return deq_.begin();
+}
+template <class T>
+auto BlockQueue<T>::end()
+{
+    std::lock_guard<std::mutex> locker(mtx_);
+    return deq_.end();
+}
+template <class T>
+auto BlockQueue<T>::rbegin()
+{
+    std::lock_guard<std::mutex> locker(mtx_);
+    return deq_.rbegin();
+}
+template <class T>
+auto BlockQueue<T>::rend()
+{
+    std::lock_guard<std::mutex> locker(mtx_);
+    return deq_.rend();
+}
+
+template <class T>
 BlockQueue<T>::~BlockQueue()
 {
-    if(!is_close_)
+    if (!is_close_)
     {
         close();
     }
@@ -99,18 +135,46 @@ size_t BlockQueue<T>::capacity() noexcept
 }
 
 template <class T>
-T BlockQueue<T>::front()
+T &BlockQueue<T>::front()
 {
     std::lock_guard<std::mutex> locker(mtx_);
     assert(!deq_.empty());
     return deq_.front();
 }
 template <class T>
-T BlockQueue<T>::back()
+const T &BlockQueue<T>::front() const
+{
+    std::lock_guard<std::mutex> locker(mtx_);
+    assert(!deq_.empty());
+    return deq_.front();
+}
+template <class T>
+T &BlockQueue<T>::back()
 {
     std::lock_guard<std::mutex> locker(mtx_);
     assert(!deq_.empty());
     return deq_.back();
+}
+template <class T>
+const T &BlockQueue<T>::back() const
+{
+    std::lock_guard<std::mutex> locker(mtx_);
+    assert(!deq_.empty());
+    return deq_.back();
+}
+
+template <class T>
+bool BlockQueue<T>::push_front(T &&item, Ms timeout)
+{
+    std::unique_lock<std::mutex> locker(mtx_);
+    bool flag = condProducer_.wait_for(locker, timeout, [this]()
+                                       { return deq_.size() < capacity_ || is_close_; });
+    if (!flag || is_close_)
+        return false;
+    // 完美转发，原地移动/拷贝
+    deq_.emplace_front(std::forward<T>(item));
+    condConsumer_.notify_one();
+    return true;
 }
 
 template <class T>
@@ -127,26 +191,63 @@ bool BlockQueue<T>::push_back(T &&item, Ms timeout)
     return true;
 }
 template <class T>
-bool BlockQueue<T>::pop(T &item, Ms timeout)
+bool BlockQueue<T>::pop_front(T &item, Ms timeout)
 {
     std::unique_lock<std::mutex> locker(mtx_);
     bool flag = condConsumer_.wait_for(locker, timeout, [this]()
                                        { return !deq_.empty() || is_close_; });
     if (!flag || is_close_)
         return false;
-    item = std::move(deq_.front()); // 适配缓冲区, 转移所有权
+    item = std::move(deq_.front()); // 转移所有权
     deq_.pop_front();
     condProducer_.notify_one();
     return true;
 }
 template <class T>
+bool BlockQueue<T>::pop_front(Ms timeout)
+{
+    std::unique_lock<std::mutex> locker(mtx_);
+    bool flag = condConsumer_.wait_for(locker, timeout, [this]()
+                                       { return !deq_.empty() || is_close_; });
+    if (!flag || is_close_)
+        return false;
+    deq_.pop_front();
+    condProducer_.notify_one();
+    return true;
+}
+template <class T>
+bool BlockQueue<T>::pop_back(T &item, Ms timeout)
+{
+    std::unique_lock<std::mutex> locker(mtx_);
+    bool flag = condConsumer_.wait_for(locker, timeout, [this]()
+                                       { return !deq_.empty() || is_close_; });
+    if (!flag || is_close_)
+        return false;
+    item = std::move(deq_.back()); // 转移所有权
+    deq_.pop_back();
+    condProducer_.notify_one();
+    return true;
+}
+template <class T>
+bool BlockQueue<T>::pop_back(Ms timeout)
+{
+    std::unique_lock<std::mutex> locker(mtx_);
+    bool flag = condConsumer_.wait_for(locker, timeout, [this]()
+                                       { return !deq_.empty() || is_close_; });
+    if (!flag || is_close_)
+        return false;
+    deq_.pop_back();
+    condProducer_.notify_one();
+    return true;
+}
+
+template <class T>
 bool BlockQueue<T>::wait_for_not_empty_or_timeout(Ms timeout)
 {
     std::unique_lock<std::mutex> lock(mtx_);
     // 等待：队列非空 || 关闭 || 超时
-    return condConsumer_.wait_for(lock, timeout, [this]() {
-        return !deq_.empty() || is_close_;
-    });
+    return condConsumer_.wait_for(lock, timeout, [this]()
+                                  { return !deq_.empty() || is_close_; });
 }
 template <class T>
 void BlockQueue<T>::swap_all(std::deque<T> &out) noexcept
@@ -159,5 +260,5 @@ template <class T>
 void BlockQueue<T>::flush() noexcept
 {
     condConsumer_.notify_one();
-};
+}
 #endif // BLOCK_QUEUE_HPP

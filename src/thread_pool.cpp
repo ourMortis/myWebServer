@@ -79,7 +79,7 @@ void ThreadPool::worker(std::shared_ptr<shared_pool_data> pool_data_sptr)
     while (!pool_data_sptr->is_close_)
     {
         std::unique_ptr<Task> task_uptr; // 循环体内智能指针 每轮循环后释放资源
-        bool is_take_task = pool_data_sptr->block_queue_uptr_->pop(task_uptr, thread_take_task_timeout_);
+        bool is_take_task = pool_data_sptr->block_queue_uptr_->pop_front(task_uptr, thread_take_task_timeout_);
         if (is_take_task && task_uptr)
         {
             try // 捕获异常 防止因为某个线程出错导致整个程序崩溃
@@ -101,7 +101,7 @@ void ThreadPool::worker(std::shared_ptr<shared_pool_data> pool_data_sptr)
         while (!pool_data_sptr->block_queue_uptr_->empty())
         {
             std::unique_ptr<Task> task_uptr; // 循环体内智能指针 每轮循环后释放资源
-            bool is_take_task = pool_data_sptr->block_queue_uptr_->pop(task_uptr, thread_take_task_timeout_);
+            bool is_take_task = pool_data_sptr->block_queue_uptr_->pop_front(task_uptr, thread_take_task_timeout_);
             if (is_take_task && task_uptr)
             {
                 try // 捕获异常 防止因为某个线程出错导致整个程序崩溃
